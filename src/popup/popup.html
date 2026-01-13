@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Time Tracker</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <h1>Time Tracker</h1>
+      <button id="open-dashboard" class="icon-btn" title="Open Dashboard">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Current Site Section -->
+    <section class="current-site">
+      <div class="section-header">
+        <h2>Current Site</h2>
+      </div>
+      <div class="site-info">
+        <span id="current-domain" class="domain-name">-</span>
+        <span id="current-time" class="time-value">0m</span>
+      </div>
+
+      <div class="limit-section">
+        <div class="limit-controls">
+          <input type="number" id="limit-input" placeholder="Minutes" min="1" max="99999">
+          <select id="limit-period" class="period-select">
+            <option value="day">/ day</option>
+            <option value="week">/ week</option>
+            <option value="month">/ month</option>
+          </select>
+          <button id="set-limit" class="btn btn-primary">Set</button>
+        </div>
+        <div id="limit-status" class="limit-status"></div>
+        <button id="remove-limit" class="btn btn-danger" style="display:none">Remove Limit</button>
+      </div>
+    </section>
+
+    <!-- Today's Top Sites -->
+    <section class="top-sites">
+      <div class="section-header">
+        <h2>Today's Top Sites</h2>
+      </div>
+      <ul id="top-sites-list" class="sites-list">
+        <li class="empty-state">No activity yet</li>
+      </ul>
+    </section>
+
+    <!-- Quick Stats -->
+    <section class="quick-stats">
+      <div class="stat">
+        <span class="stat-value" id="today-total">0m</span>
+        <span class="stat-label">Today</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="week-total">0m</span>
+        <span class="stat-label">This Week</span>
+      </div>
+    </section>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
