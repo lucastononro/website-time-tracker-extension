@@ -47,9 +47,10 @@ async function initialize() {
     periodInMinutes: 60 * 24 // Once a day
   });
 
-  // Set up inactivity check alarm (every 5 seconds)
+  // Set up inactivity check alarm (every 1 minute - Chrome's minimum)
+  // Note: Real-time inactivity detection happens in handleActivityDetected
   await chrome.alarms.create(ALARMS.INACTIVITY_CHECK, {
-    periodInMinutes: 5 / 60 // 5 seconds
+    periodInMinutes: 1
   });
 
   // Initialize with current active tab
@@ -101,7 +102,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 chrome.windows.onFocusChanged.addListener(async (windowId) => {
   if (windowId === chrome.windows.WINDOW_ID_NONE) {
     // Browser lost focus - pause tracking
-    finalizeCurrentSession();
+    await finalizeCurrentSession();
   } else {
     // Browser gained focus - check active tab
     try {
@@ -169,7 +170,7 @@ async function handleMessage(message, sender) {
  */
 async function handleTabChange(tabId) {
   // Finalize any current session
-  finalizeCurrentSession();
+  await finalizeCurrentSession();
 
   try {
     const tab = await chrome.tabs.get(tabId);
@@ -219,12 +220,30 @@ async function handleActivityDetected(tabId, domain) {
 
   // Domain mismatch (URL changed?) - update domain
   if (domain !== state.activeDomain) {
-    finalizeCurrentSession();
+    await finalizeCurrentSession();
     state.activeDomain = domain;
     state.isTracking = false;
   }
 
   const now = Date.now();
+
+  // KEY FIX: Check if we were inactive for too long
+  // If so, save the previous session and start a new one
+  if (state.isTracking && state.lastActivityTime) {
+    const timeSinceLastActivity = now - state.lastActivityTime;
+    if (timeSinceLastActivity >= INACTIVITY_TIMEOUT_MS) {
+      // We were inactive - save time up to last activity
+      const activeTime = state.lastActivityTime - state.sessionStartTime;
+      if (activeTime > 0 && state.activeDomain) {
+        console.log('[TimeTracker] Saving interrupted session:', activeTime, 'ms for', state.activeDomain);
+        addPendingTime(state.activeDomain, activeTime);
+        // Persist immediately to avoid data loss
+        await persistPendingTime();
+      }
+      // Start fresh session from now
+      state.sessionStartTime = now;
+    }
+  }
 
   if (!state.isTracking) {
     // Start new tracking session
@@ -234,6 +253,13 @@ async function handleActivityDetected(tabId, domain) {
   }
 
   state.lastActivityTime = now;
+
+  // Persist every 30 seconds of active tracking to minimize data loss
+  if (state.lastPersistTime === undefined || now - state.lastPersistTime > 30000) {
+    state.lastPersistTime = now;
+    // Don't await - do it in background
+    persistPendingTime().catch(e => console.error('[TimeTracker] Persist error:', e));
+  }
 
   return await getDomainStatus(domain);
 }
@@ -265,7 +291,7 @@ function checkInactivityTimeout() {
 /**
  * Finalize current tracking session
  */
-function finalizeCurrentSession() {
+async function finalizeCurrentSession() {
   if (!state.isTracking || !state.sessionStartTime || !state.activeDomain) {
     return;
   }
@@ -287,6 +313,8 @@ function finalizeCurrentSession() {
 
   if (elapsed > 0) {
     addPendingTime(state.activeDomain, elapsed);
+    // Persist immediately to avoid data loss on service worker termination
+    await persistPendingTime();
   }
 
   state.isTracking = false;

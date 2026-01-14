@@ -69,10 +69,12 @@ function formatDateLabel(dateKey, period) {
 document.addEventListener('DOMContentLoaded', async () => {
   // Set up period buttons
   document.querySelectorAll('.period-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       document.querySelector('.period-btn.active').classList.remove('active');
       btn.classList.add('active');
       currentPeriod = btn.dataset.period;
+      // Reload data for the new period
+      await loadData();
       updateDashboard();
     });
   });
@@ -100,10 +102,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Load data from background
 async function loadData() {
   try {
-    const days = currentPeriod === 'day' ? 1 : currentPeriod === 'week' ? 7 : 30;
+    // Always load 30 days to have data available when switching periods
+    const days = 30;
     statsData = await chrome.runtime.sendMessage({ type: 'GET_STATS', days });
     limitsData = await chrome.runtime.sendMessage({ type: 'GET_LIMITS' });
-    console.log('[Dashboard] Loaded stats:', statsData);
+    console.log('[Dashboard] Loaded stats for', days, 'days:', statsData);
+    console.log('[Dashboard] Daily data keys:', Object.keys(statsData?.dailyData || {}));
     console.log('[Dashboard] Loaded limits:', limitsData);
   } catch (e) {
     console.error('Error loading data:', e);
